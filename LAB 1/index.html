@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <meta charset="utf-8">
+        <title>CAVE simulator</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <link type="text/css" rel="stylesheet" href="main.css">
+
+
+
+
+    </head>
+    <body>
+		<div id="info">
+            CAVE Simulator. The head and teapot are draggable. <br />
+            "L" See from Left Eye | "R" See from Right Eye | "S" toggle show scene  <br />
+		</div>
+    
+		<script type="module">
+            import * as THREE from 'https://threejs.org/build/three.module.js';
+            import { OrbitControls } from 'https://threejs.org/examples/jsm/controls/OrbitControls.js';
+            import { DragControls } from 'https://threejs.org/examples/jsm/controls/DragControls.js';
+            import { TeapotBufferGeometry } from 'https://threejs.org/examples/jsm/geometries/TeapotBufferGeometry.js';
+            import { GLTFLoader } from 'https://threejs.org/examples/jsm/loaders/GLTFLoader.js';
+
+class DisplaySurface 
+{
+    constructor(name, origin, u_vector, v_vector) 
+    {
+        this.name = name;
+        this.origin = origin;
+        this.u = u_vector;
+        this.v = v_vector;
+    }
+
+    viewMatrix(eye)
+    {
+        //screen in the scene -> 4x4 Matrix representing how to render the scene onto the display from the given eye position
+        var P = this.origin.clone();
+        var Q = this.origin.clone().add(this.u);
+        
+        //calculate the normal of the plane. 
+        var normal = this.u.clone().cross(this.v).normalize(); //this normal faces the eye    
+        var distance = this.origin.clone().sub(eye).dot(normal);
+
+        var target = eye.clone().add(normal.clone().multiplyScalar(distance))    //target is the "closest point to the screen"
+        
+        var upVector = new THREE.Vector3(0,1,0);    
+        var mat = new THREE.Matrix4();
+        mat = mat.lookAt(eye, target, upVector); // this lookAt version creates only a rotation matrix
+
+        var translate = new THREE.Matrix4().makeTranslation(-eye.x, -eye.y, -eye.z);
+        mat = mat.multiplyMatrices(mat, translate); //mathematically this is correct. THREEJS calculates the matrices wrong. 
+
+        return mat;
+    }
+	
+    projectionMatrix(eye, znear, zfar)
+    {
+		// to be written by you!
+		var normal = this.u.clone().cross(this.v).normalize();
+        var distance = this.origin.clone().sub(eye).dot(normal);
+        var uDir = this.u.clone().normalize()
+        var vDir = this.v.clone().normalize()
+
+        var target = eye.clone().add(normal.clone().multiplyScalar(distance))
+        var uDist = target.clone().multiply(uDir).sub(this.origin.clone().multiply(uDir)) //component wise multiplication to "filter" out just the values that we want 
+        var vDist = target.clone().multiply(vDir).sub(this.origin.clone().multiply(vDir)) //(= just the compontent corresponding to the desired direction) 
+
+        var QU = this.origin.clone().add(this.u).add(vDist)  //QU is the point on the right boundary on height "v" of the target.
+        var R = QU.clone().sub(target).length()
+        var L = R -  this.u.length()
+
+        var QV = this.origin.clone().add(this.v).add(uDist) //QVis the point on the "upper" boundary on height "U" of the target.
+        var T = QV.clone().sub(target).length()
+        var B =  T - this.v.length()
+
+        distance = Math.abs(distance)
+
+        var left = znear * L/distance;
+        var right = znear * R/distance;
+        var bottom = znear * B/distance;
+        var top = znear * T/distance;
+        
+        return new THREE.Matrix4().makePerspective(left, right, top, bottom, znear, zfar);
+        return new THREE.Matrix4().makePerspective(left, right, top, bottom, znear, zfar);
+    }
+}
+
+
+var renderer, scene, camera;
+var displaySurfaces, displaySurfaceScene, displaySurfaceTargets;
+var eyeCenter, eyeScene; 
+var orbitControl;
+var showScene = true;
+var mixers = [];
+var birds = [];
+var clock = new THREE.Clock();
+
+
+var animations = [
+    {url:"https://raw.githubusercontent.com/mrdoob/three.js/master/examples/models/gltf/Flamingo.glb", name:"Flamingo"},
+    {url:"https://raw.githubusercontent.com/mrdoob/three.js/master/examples/models/gltf/Parrot.glb", name: "Parrot"}
+];
+var parrot, flamingo;
+
+function addDragControlToObjects()
+{
+    var objects = [];
+    objects.push(scene.getObjectByName("Teapot"));
+    objects.push(eyeScene.getObjectByName("Head"));
+
+
+    var controls = new DragControls( objects, camera, renderer.domElement );
+    controls.addEventListener( 'dragstart', function ( event ) {
+            event.object.material.emissive.set( 0xaaaaaa );
+            orbitControl.enableRotate = false;
+        } );
+        controls.addEventListener( 'dragend', function ( event ) {
+            event.object.material.emissive.set( 0x000000 );
+            orbitControl.enableRotate = true;
+    } );
+}
+
+function createEyeScene()
+{
+    var IPD = 6.8; 
+    eyeCenter = new THREE.Vector3(50, 20, 50);
+    // eye positions relative to the head
+    var eyeL = new THREE.Vector3( - IPD/2, 10, -6);
+    var eyeR = new THREE.Vector3( + IPD/2, 10, -6);
+    
+    eyeScene = new THREE.Scene();
+
+    // add sphere representing head
+    var geometry = new THREE.SphereGeometry( 10, 32, 22 );
+    var material = new THREE.MeshPhongMaterial( { color: 0xaaaaaa } );
+    var head = new THREE.Mesh( geometry, material );
+    head.name = "Head";
+    head.position.set(eyeCenter.x, eyeCenter.y, eyeCenter.z);
+    eyeScene.add(head);
+
+    // add spheres representing L/R eyes
+    var geometry = new THREE.SphereGeometry( 3, 32, 22 );
+    var material = new THREE.MeshPhongMaterial( { color: 0xff0000 } );
+    var sphere = new THREE.Mesh( geometry, material );
+    sphere.name = "EyeL";
+    sphere.position.set(eyeL.x, eyeL.y, eyeL.z);
+    head.add(sphere);
+	
+    var geometry = new THREE.SphereGeometry( 3, 32, 22 );
+    var material = new THREE.MeshPhongMaterial( { color: 0x0000ff } );
+    var sphere = new THREE.Mesh( geometry, material );
+    sphere.name = "EyeR";
+    sphere.position.set(eyeR.x, eyeR.y, eyeR.z);
+	head.add(sphere);
+    
+    createLights(eyeScene);
+}
+
+function createRenderer()
+{
+    renderer = new THREE.WebGLRenderer({preserveDrawingBuffer: true});
+    renderer.autoClear = false;
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+}
+
+function enableOrbitCamera(cam, renderer)
+{
+    orbitControl = new OrbitControls(cam, renderer.domElement );
+    orbitControl.minDistance = 120;
+    orbitControl.maxDistance = 50000;
+}
+
+function createLights(scn)
+{
+    var ambientLight = new THREE.AmbientLight(0x888888, 0.4);
+    scn.add(ambientLight);
+    var pointLight = new THREE.PointLight(0xffffff, 0.8);
+	pointLight.position.z += 200;
+    scn.add(pointLight);
+}
+
+function createScene()
+{
+    scene = new THREE.Scene();
+    
+    var geometry = new TeapotBufferGeometry( 25, 15);
+    var material = new THREE.MeshPhongMaterial( { color: 0xffffff } );
+    var teapot = new THREE.Mesh(geometry, material);
+    teapot.name = "Teapot";
+    teapot.position.z-=70;
+    teapot.position.y-=40;
+    teapot.position.x+=50;
+    // scene.add( teapot );
+
+    loadAnimation(animations[0], flamingo);
+    loadAnimation(animations[1], parrot);
+    
+    createLights(scene);
+}
+
+function loadAnimation(animation, mesh) {
+    var loader = new GLTFLoader();
+    loader.load(animation.url,
+        function ( gltf ) {
+            mesh = gltf.scene.children[ 0 ];
+            var s = 0.35;
+            mesh.scale.set( s, s, s );
+            mesh.position.y = 15+Math.floor(Math.random()*50);
+            mesh.rotation.y = - 1;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.name = animation.name;
+            scene.add( mesh );
+            var mixer = new THREE.AnimationMixer( mesh );
+            mixer.clipAction( gltf.animations[ 0 ] ).setDuration( 1 ).play();
+            mixers.push( mixer );
+            birds.push(mesh);
+       },
+    );
+}
+
+
+// create a scene with 3D objects representing the display surfaces
+function createDisplaySurfaceScene()
+{
+    displaySurfaceScene = new THREE.Scene();
+
+    // add display surfaces
+    for (var [index, displaySurface] of displaySurfaces.entries())
+    {
+        var origin = displaySurface.origin;
+        var u = displaySurface.u;
+        var v = displaySurface.v;
+  
+        var geometry = new THREE.BoxGeometry(u.length(), v.length(), 0.01);
+        var material = new THREE.MeshPhongMaterial( {map: displaySurfaceTargets[index].texture} );
+        if(index == 4)
+            material = new THREE.MeshPhongMaterial( {map: displaySurfaceTargets[index].texture, color:0x00ffff} );
+        var cube = new THREE.Mesh( geometry, material );
+        cube.name = displaySurface.name;
+        if (displaySurface.name == "Left")
+            cube.rotation.y = Math.PI / 2;
+       
+		if (displaySurface.name == "Right")
+            cube.rotation.y = - Math.PI / 2;
+			
+		if (displaySurface.name == "Floor")
+		{
+            cube.rotation.x =  Math.PI / 2;
+			cube.rotation.z =  Math.PI ;
+		}
+       
+	    var uHalf = u.clone().multiplyScalar(0.5);
+		var vHalf = v.clone().multiplyScalar(0.5);
+		var center = new THREE.Vector3().addVectors(origin, uHalf);
+		center.add(vHalf);
+		cube.position.set(center.x, center.y, center.z);
+		
+        displaySurfaceScene.add(cube);
+    }
+    
+    createLights(displaySurfaceScene);
+}
+
+function createDisplaySurfaceTargets()
+{
+    const SIZE = 1024;  // texture resolution
+    displaySurfaceTargets = [];
+    
+    for (var v of displaySurfaces)       
+        displaySurfaceTargets.push(new THREE.WebGLRenderTarget(SIZE, SIZE));
+}
+
+
+function createCamera()
+{
+    camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 10000 );
+    camera.position.set( 100, 100, 300 );
+    camera.lookAt( 0, 0, 0 );
+}
+
+
+function createDisplaySurfaces()
+{
+    displaySurfaces = [];
+    // FRONT SCREEN
+    var frontScreen = new DisplaySurface("Front", 
+        new THREE.Vector3(-150.0, -150.0, -150.0), 
+        new THREE.Vector3(300.0, 0.0,   0.0), 
+        new THREE.Vector3(0.0, 300.0,   0.0));
+    displaySurfaces.push(frontScreen);
+
+    // LEFT SCREEN
+    var leftScreen = new DisplaySurface("Left",
+        new THREE.Vector3(-150.0, -150.0, 150.0), 
+        new THREE.Vector3(0.0, 0.0,  -300.0), 
+        new THREE.Vector3(0.0, 300.0,   0.0));
+    displaySurfaces.push(leftScreen);
+    
+     // RIGHT SCREEN
+        var rightScreen = new DisplaySurface("Right",
+        new THREE.Vector3(150.0, 150.0, -150.0), 
+        new THREE.Vector3(0.0, 0.0,  300.0), 
+        new THREE.Vector3(0.0, -300.0,   0.0));
+    displaySurfaces.push(rightScreen);
+            
+            
+    // UP SCREEN
+    var upScreen = new DisplaySurface("Floor",
+        new THREE.Vector3(-150.0, 150.0, -150.0),
+        new THREE.Vector3(300.0, 0.0, 0.0), 
+        new THREE.Vector3(0.0, 0.0, 300.0)); 
+    displaySurfaces.push(upScreen);
+
+    // DOWN SCREEN
+    var downScreen = new DisplaySurface("Floor",
+        new THREE.Vector3(150.0, -150.0, 150.0), 
+        new THREE.Vector3(-300.0, 0.0,  0.0), 
+        new THREE.Vector3(0.0, 0.0,  -300.0));
+    displaySurfaces.push(downScreen);   
+}
+
+function getLeftEyePosition()
+{
+    var eye = eyeScene.getObjectByName("EyeL");
+    return eye.getWorldPosition(new THREE.Vector3());
+}
+
+function getRightEyePosition()
+{
+    var eye = eyeScene.getObjectByName("EyeR");
+    return eye.getWorldPosition(new THREE.Vector3());
+}
+
+function cameraFromViewProj(view, proj)
+{
+	var cam = camera.clone();
+    var inv = new THREE.Matrix4().getInverse(view);
+	cam.position.set(inv.elements[12], inv.elements[13], inv.elements[14]);
+	cam.setRotationFromMatrix(view);
+	cam.projectionMatrix = proj.clone();
+	return cam;
+}
+
+var t=0;
+// refresh function
+var animate = function () {
+    var gl = renderer.domElement.getContext('webgl') || this.world.renderer.domElement.getContext('experimental-webgl');
+    requestAnimationFrame(animate);
+
+    // 1. render scene objects
+	renderer.setClearColor(0x808080);
+    renderer.clear();
+     
+    var delta = clock.getDelta();
+    for ( var i = 0; i < mixers.length; i ++ ) {
+        mixers[ i ].update( delta );
+    }
+
+    if (birds.length >= 2) {
+        t+=0.01
+        birds[0].rotation.y += 0.005;
+        birds[1].rotation.y += 0.003;
+
+        birds[0].position.x = 60*Math.cos(t)+10;
+        birds[0].position.z = 60*Math.sin(t)+10;
+        birds[1].position.x = 20*Math.cos(t);
+        birds[1].position.z = 20*Math.sin(t)-30;
+    }
+
+    if (showScene)
+        renderer.render( scene, camera );
+    
+    // 2. render scene objects onto a texture, for each target
+    for (let [index, displaySurface] of displaySurfaces.entries())
+    {
+        renderer.setRenderTarget(displaySurfaceTargets[index]);
+        renderer.setClearColor(0x404040);
+        renderer.clear();
+
+		// left eye on RED channel
+        gl.colorMask(1, 0, 0, 0); 
+		var eye = getLeftEyePosition();
+		var view = displaySurface.viewMatrix(eye);
+		var proj = displaySurface.projectionMatrix(eye, 1, 10000);
+        var leftCamera = cameraFromViewProj(view, proj);
+        renderer.render(scene, leftCamera); 
+    
+		// right eye on GREEN, BLUE channels
+		gl.colorMask(0, 1, 1, 0);
+		var eye = getRightEyePosition();
+		var view = displaySurface.viewMatrix(eye);
+		var proj = displaySurface.projectionMatrix(eye, 1, 10000);
+        var rightCamera = cameraFromViewProj(view, proj);
+        renderer.clearDepth();
+        renderer.render(scene, rightCamera); 
+		
+        gl.colorMask(1, 1, 1, 0);
+    }
+    // restore state
+    renderer.setRenderTarget(null);
+    renderer.setClearColor(0x000000);
+  
+    // 3. render display surfaces as (textured) quads
+    renderer.render(displaySurfaceScene, camera);
+	
+	// 4. render eyes
+    renderer.render(eyeScene, camera);
+
+};
+
+
+window.addEventListener( 'keydown', function ( event ) 
+{
+        switch ( event.code ) {
+            case 'KeyL': 
+                var eye = getLeftEyePosition();
+                camera.position.set(eye.x, eye.y, eye.z); 
+                break;
+                
+            case 'KeyR': 
+                var eye = getRightEyePosition();
+                camera.position.set(eye.x, eye.y, eye.z); 
+                break;
+                
+            case 'KeyS':
+                showScene = !showScene;
+                break;
+				
+			case 'KeyT':
+				var viewF = displaySurfaces[0].viewMatrix(new THREE.Vector3(50,20,100));
+				var viewL = displaySurfaces[1].viewMatrix(new THREE.Vector3(50,20,100));
+				var viewR = displaySurfaces[2].viewMatrix(new THREE.Vector3(50,20,100));
+				var viewB = displaySurfaces[3].viewMatrix(new THREE.Vector3(50,20,100));
+				console.log("View matrices:");
+				console.log(viewF);
+				console.log(viewL);
+				console.log(viewR);
+				console.log(viewB);
+				break;
+                
+                    
+}
+});
+
+
+
+createRenderer();  			// create WebGL renderer
+createDisplaySurfaces();	// Display surfaces
+createDisplaySurfaceTargets(); // Textures for the display surfaces
+createDisplaySurfaceScene();	// 3D objects for the display surfaces
+createEyeScene();	// spheres representing head + eyes
+createScene();		// some objects to test (teapot...)
+createCamera();		// a third-person camera
+enableOrbitCamera(camera, renderer);  // basic camera control
+addDragControlToObjects();	// allow some objects to be dragged
+animate();
+
+
+		</script>
+    </body>
+</html>
