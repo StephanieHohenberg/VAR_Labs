@@ -3,7 +3,16 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags: []
+  tags:
+  - White
+  - Black
+  - Chess
+  - King
+  - Queen
+  - Bishop
+  - Pawn
+  - Knight
+  - Rook
   layers:
   - Default
   - TransparentFX
