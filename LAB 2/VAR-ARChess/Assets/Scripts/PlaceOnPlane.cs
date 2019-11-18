@@ -59,6 +59,8 @@ public class PlaceOnPlane : MonoBehaviour
 
     void Update()
     {
+        //@TODO if(!gameStarted)
+
         if (!TryGetTouchPosition(out Vector2 touchPosition))
             return;
 
@@ -71,10 +73,13 @@ public class PlaceOnPlane : MonoBehaviour
             if (spawnedObject == null)
             {
                 spawnedObject = Instantiate(m_PlacedPrefab, hitPose.position, hitPose.rotation);
+                // TODO: start button, rotate, scale
             }
             else
             {
-                spawnedObject.transform.position = hitPose.position;
+                // TODO: forward raycast
+                // TODO: reset Button
+                
             }
         }
     }

@@ -344,6 +344,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
+    m_TypeName: UnityEngine.UI.MaskableGraphic+CullStateChangedEvent, UnityEngine.UI,
+      Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
   m_FontData:
     m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
     m_FontSize: 20
@@ -488,6 +490,11 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5878033867095350881, guid: 3ef41ff3efff1ac41bd728d880a77125,
+        type: 3}
+      propertyPath: m_TagString
+      value: Board
+      objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 4209942832697038574, guid: 3ef41ff3efff1ac41bd728d880a77125, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 3ef41ff3efff1ac41bd728d880a77125, type: 3}
@@ -529,6 +536,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 387c840df1e1f0242a414df499baa0f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  highlightprefab: {fileID: 6122033621261954738, guid: ec22a82450d3d5d4290956a54c3e5b59,
+    type: 3}
   speed: 1
   turnDisplayText: {fileID: 1689319676}
   errorDisplayText: {fileID: 641041015}
@@ -692,6 +701,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
+    m_TypeName: UnityEngine.UI.MaskableGraphic+CullStateChangedEvent, UnityEngine.UI,
+      Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
   m_FontData:
     m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
     m_FontSize: 20

@@ -24,6 +24,8 @@ public class ChessController : MonoBehaviour
 	private GameObject selectedGameObject;
 	private Figure selectedFigureObject;
 
+    public GameObject highlightprefab;
+
     public float speed;
 	public Text turnDisplayText;
 	public Text errorDisplayText;
@@ -37,47 +39,57 @@ public class ChessController : MonoBehaviour
 		initChessboard();
 		turnDisplayText.text = MESSAGE_WHITE_TURN;
 	}
-    
+
     void Update()
     {
 
+        Vector3 input = Vector3.zero;
+#if UNITY_EDITOR
         if (Input.GetMouseButtonDown(0))
-        {
-
-            displayMessage("");
-            ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out hit))
-            {
-                rcHit = hit.point;
-                Debug.Log(rcHit);
-
-                rcHit = chessGO.transform.InverseTransformPoint(rcHit); //we always consider the Raycast hit in respect to the Chessboard scale
-
-                Vector3Int integerHit = Vector3Int.RoundToInt(rcHit); // x and z are the respective board indices (also works when clicking figures!)
-                Debug.Log(integerHit);
-
-                //to access them:
-                int index_i = integerHit.x;
-                int index_j = integerHit.z;
-
-                if (hit.transform.gameObject.tag != "Chess")
-                {
-                    onClickOnFigure(hit.transform.gameObject); //should be changed
-                }
-                else
-                {
-                    onClickOnBoard(hit); //should be changed
-                }
+                input = Input.mousePosition;
+#else
+        for (var i = 0; i < Input.touchCount; ++i) {
+            if (Input.GetTouch(i).phase == TouchPhase.Began) {
+                input = Input.GetTouch(i).position;
             }
         }
+                 
+
+#endif
+
+        if (input != Vector3.zero)
+            processInput(input);
+
+
     }
 
-    private void onClickOnFigure(GameObject hitGameObject) {
+    void processInput(Vector3 input)
+    {
+        displayMessage("");
+        dehighlightOptions();
+
+        ray = Camera.main.ScreenPointToRay(input);
+        if (Physics.Raycast(ray, out hit))
+        {
+            rcHit = chessGO.transform.InverseTransformPoint(hit.point); //we always consider the Raycast hit in respect to the Chessboard scale
+            Vector3Int integerHit = Vector3Int.RoundToInt(rcHit); // x and z are the respective board indices (also works when clicking figures!)
+            
+            string tag = hit.transform.gameObject.tag; 
+
+            if (tag != "Chess" && tag != "Board")
+                onClickOnFigure(hit.transform.gameObject, integerHit); 
+            else
+                onClickOnBoard(hit, integerHit); 
+        }
+       
+    }
+
+    private void onClickOnFigure(GameObject hitGameObject, Vector3Int indexVec) {
     	if(hasGameObjectColorOfCurrentPlayer(hitGameObject)) {
-    		selectFigure(hitGameObject);
+    		selectFigure(hitGameObject, indexVec);
     	} else {
     		if(selectedGameObject) {
-    			makeTurnBeating(hitGameObject);
+    			makeTurnBeating(hitGameObject, indexVec);
     		} else {
     			displayMessage(MESSAGE_NOT_YOUR_TURN);
     		}
@@ -85,7 +97,7 @@ public class ChessController : MonoBehaviour
     }
 
 
-    private void selectFigure(GameObject hitGameObject) {
+    private void selectFigure(GameObject hitGameObject, Vector3Int indexVec) {
     	// deselect last figure
 		if(selectedGameObject) {
 			selectedGameObject.transform.Translate(new Vector3(0, -15, 0));
@@ -93,63 +105,58 @@ public class ChessController : MonoBehaviour
 
 		// select figure
 		selectedGameObject = hitGameObject;
-		selectedFigureObject = chessBoard[0, 0]; //TODO: get chessBoard indices By clicked Figure / GameObjectFigure
+		selectedFigureObject = chessBoard[indexVec.x, indexVec.z];
 		hit.transform.gameObject.transform.Translate(new Vector3(0, 15, 0));
-
-		// TODO visualize options
+        highlightOptionsForSelectedFigure();
     }
 
 
-    private void onClickOnBoard(RaycastHit hit) {
-    	if(selectedGameObject) {
-    		makeTurnMoving(hit);
+    private void onClickOnBoard(RaycastHit hit, Vector3Int indexVec) {
+    	if(selectedGameObject && isNotFieldOfSelectedFigure(indexVec)) {
+    		makeTurnMoving(hit, indexVec);
     	}
     }
 
-    private void makeTurnMoving(RaycastHit hit) {
-		// TODO get chessBoard indices By clicked Field
-    	int x = 0;
-    	int y = 0;
-    	/**
-    	if(chessBoard[x,y] != null) {
-    		GameObject gameObjectOnField = null; // TODO get GameObject on clicked Field By chessboard Indices 
-    		if(hasFigureColorOfCurrentPlayer(chessBoard[x,y])) {
-    			selectFigure(gameObjectOnField);
+    private void makeTurnMoving(RaycastHit hit, Vector3Int indexVec) {
+    	int i = indexVec.x;
+        int j = indexVec.z ;
+    
+    	if(chessBoard[i,j] != null) {
+    		GameObject gameObjectOnField = null; 
+    		if(hasFigureColorOfCurrentPlayer(chessBoard[i,j])) {
+    			selectFigure(gameObjectOnField, indexVec);
     		} else {
-    			makeTurnBeating(gameObjectOnField);
+    			makeTurnBeating(gameObjectOnField, indexVec);
     		}
     	}
 
-		 if(!selectedFigureObject.isValidMove(x, y, chessBoard)) {
+		 if(!selectedFigureObject.isValidMove(i, j, chessBoard)) {
 			displayMessage(MESSAGE_INVALID_MOVE);
 			return;
 		}   
-		**/ 	
 
-		// TODO normalize/centralize position target Position
-		float step =  speed * Time.deltaTime; 
-		Vector3 targetPosition = new Vector3((float)Math.Floor(hit.point.x), -80, (float)Math.Floor(hit.point.z));
-		selectedGameObject.transform.position = Vector3.MoveTowards(selectedGameObject.transform.position, targetPosition, step);
+		float step =  speed * Time.deltaTime;
+        Vector3 localTargetPosition = new Vector3(i, 0.5f, j);
+        Vector3 globalTargetPosition = chessGO.transform.TransformPoint(localTargetPosition);
+        selectedGameObject.transform.position = Vector3.MoveTowards(selectedGameObject.transform.position, globalTargetPosition, step);
 
-		moveFigureTo(selectedFigureObject, x, y);
+		moveFigureTo(selectedFigureObject, i, j);
 		nextTurn();
 	}
 
-    private void makeTurnBeating(GameObject hitGameObject) {
-    	// TODO get ChessBoard Indices By GameObjectFigure
-    	
-    	int x = 0;
-    	int y = 0;
-		/**
-		if(! selectedFigureObject.isValidMove(x, y, chessBoard)) {
+    private void makeTurnBeating(GameObject hitGameObject, Vector3Int indexVec) {
+    	int i = indexVec.x;
+    	int j = indexVec.z;
+	
+		if(! selectedFigureObject.isValidMove(i, j, chessBoard)) {
 			displayMessage(MESSAGE_INVALID_MOVE);
-			//return;
-		}   **/ 	
+			return;
+		}  
 
     	checkWhetherKingGotBeaten(hitGameObject);
     	hitGameObject.SetActive(false);
     	selectedGameObject.transform.position = hitGameObject.transform.position;
-    	moveFigureTo(selectedFigureObject, x, y);
+    	moveFigureTo(selectedFigureObject, i, j);
     	nextTurn();
 
     	//TODO: animation
@@ -180,6 +187,33 @@ public class ChessController : MonoBehaviour
     	turnDisplayText.text = hasWhiteTurn() ? MESSAGE_WHITE_TURN : MESSAGE_BLACK_TURN;
     }
 
+    private void highlightOptionsForSelectedFigure()
+    {
+        List<IndexTuple> options = selectedFigureObject.getValidMoves(chessBoard);
+        foreach (IndexTuple o in options) {
+            Debug.LogWarning(o.i + "-" + o.j);
+            GameObject highlighter = GameObject.Instantiate(original: highlightprefab, chessGO.transform);
+            highlighter.transform.localPosition = new Vector3(o.i, 0.501f, o.j); //@TODO refactor
+        }
+    }
+
+    private void dehighlightOptions()
+    {
+        GameObject[] highlighters = GameObject.FindGameObjectsWithTag("highlight");
+        foreach(GameObject highlight in highlighters)
+        {
+            GameObject.Destroy(highlight);
+        }
+    }
+
+    private bool isNotFieldOfSelectedFigure(Vector3Int indexVec)
+    {
+        if(selectedFigureObject == null)
+        {
+            return true;
+        }
+        return selectedFigureObject.positionInFieldX != indexVec.x || selectedFigureObject.positionInFieldY != indexVec.z;
+    }
 
     private bool hasGameObjectColorOfCurrentPlayer(GameObject gameObject) {
 		return (hasWhiteTurn() && gameObject.transform.parent.tag == "White") || (!hasWhiteTurn() && gameObject.transform.parent.tag == "Black"); 	
@@ -201,23 +235,37 @@ public class ChessController : MonoBehaviour
     	chessBoard = new Figure[8, 8];
 
     	for (int i=0; i<8; i++) {
-    		chessBoard[i, 1] = new Figure(i, 1, "Pawn", false);
-    		chessBoard[i, 6] = new Figure(i, 6, "Pawn", true);
+    		chessBoard[i, 1] = new Figure(i, 1, "Pawn", true);
+    		chessBoard[i, 6] = new Figure(i, 6, "Pawn", false);
     	}
 
     	string[] sideRoles = new string[] {"Rook", "Knight", "Bishop"};
     	for (int j=0; j<3; j++) {
-    		chessBoard[j, 0] = new Figure(j, 0, sideRoles[j], false);
-    		chessBoard[7-j, 0] = new Figure(7-j, 0, sideRoles[j], false);
-    		chessBoard[j, 7] = new Figure(j, 7, sideRoles[j], true);	
-    		chessBoard[7-j, 7] = new Figure(7-j, 7, sideRoles[j], true);	
+    		chessBoard[j, 0] = new Figure(j, 0, sideRoles[j], true);
+    		chessBoard[7-j, 0] = new Figure(7-j, 0, sideRoles[j], true);
+    		chessBoard[j, 7] = new Figure(j, 7, sideRoles[j], false);	
+    		chessBoard[7-j, 7] = new Figure(7-j, 7, sideRoles[j], false);	
     	}
 
-		chessBoard[0, 4] = new Figure(0, 4, "Queen", false);
-		chessBoard[0, 3] = new Figure(0, 3, "King", false);
-		chessBoard[7, 3] = new Figure(7, 3, "Queen", true);
-		chessBoard[7, 4] = new Figure(7, 4, "King", true);
+        chessBoard[4, 0] = new Figure(4, 0, "Queen", true);
+		chessBoard[3, 0] = new Figure(3, 0, "King", true);
+		chessBoard[3, 7] = new Figure(3, 7, "Queen", false);
+		chessBoard[4, 7] = new Figure(4, 7, "King", false);
     }
+}
+
+
+public class IndexTuple
+{
+    public int i;
+    public int j;
+
+    public IndexTuple(int i, int j)
+    {
+        this.i = i;
+        this.j = j;
+    }
+
 }
 
 public class Figure {
@@ -246,14 +294,61 @@ public class Figure {
 		return false;
 	}
 
-	private bool isValidPawnMove(int positionX, int positionY, Figure[,] chessBoard) {
-		int xDiff = positionX - positionInFieldX;
-		int yDiff = Math.Abs(positionY - positionInFieldY);
+    public List<IndexTuple> getValidMoves(Figure[,] chessBoard)
+    {
+        switch (role)
+        {
+            case "Pawn": return getValidPawnMoves(chessBoard);
+           /** case "Knight": return getValidKnightMoves(chessBoard);
+            case "Bishop": return getValidBishopMoves(chessBoard);
+            case "Rook": return getValidRookMoves(chessBoard);
+            case "King": return getValidKingMoves(chessBoard);
+            case "Queen": return getValidQueenMoves(chessBoard); **/
+        }
+        return new List<IndexTuple>();
+    }
+    public List<IndexTuple> getValidPawnMoves(Figure[,] chessBoard)
+    {
+        List<IndexTuple> results = new List<IndexTuple>();
 
-		bool isForwardMove = isWhite ? yDiff == -1 : yDiff == 1;
+        int yVorzeichen = isWhite ? 1 : -1;
+        bool isInStartPosition = isWhite ? positionInFieldY == 1 : positionInFieldY == 6;
+        bool isFordwardFieldNotOccupied = chessBoard[positionInFieldX, positionInFieldY + yVorzeichen] == null;
+        bool isDiagonalFieldOccupiedRight = positionInFieldX < 7 && chessBoard[positionInFieldX + 1, positionInFieldY + yVorzeichen] != null;
+        bool isDiagonalFieldOccupiedLeft = positionInFieldX > 0 && chessBoard[positionInFieldX - 1, positionInFieldY + yVorzeichen] != null;
+
+
+        if (isInStartPosition)
+        {
+            results.Add(new IndexTuple(positionInFieldX, positionInFieldY + (2*yVorzeichen)));
+        }
+        if (isFordwardFieldNotOccupied)
+        {
+            results.Add(new IndexTuple(positionInFieldX, positionInFieldY + yVorzeichen));
+        }
+        if (isDiagonalFieldOccupiedRight)
+        {
+            results.Add(new IndexTuple(positionInFieldX+1, positionInFieldY + yVorzeichen));
+        }
+        if (isDiagonalFieldOccupiedLeft)
+        {
+            results.Add(new IndexTuple(positionInFieldX-1, positionInFieldY + yVorzeichen));
+        }
+
+        return results;
+    }
+
+    private bool isValidPawnMove(int positionX, int positionY, Figure[,] chessBoard) {
+		int xDiff = positionX - positionInFieldX;
+		int yDiff = positionY - positionInFieldY;
+
+		bool isOneStepForward = isWhite ? yDiff == 1 : yDiff == -1;
 		bool isStraightMoveAndNotOccupiedField = chessBoard[positionX, positionY] == null && xDiff == 0;
-		bool isDiagonalMoveAndOccupiedField = chessBoard[positionX, positionY] != null && xDiff == 1;
-		return isForwardMove && (isStraightMoveAndNotOccupiedField || isDiagonalMoveAndOccupiedField);
+		bool isDiagonalMoveAndOccupiedField = chessBoard[positionX, positionY] != null && Math.Abs(xDiff) == 1;
+        bool isInStartPosition = isWhite ? positionInFieldY == 1 : positionInFieldY == 6;
+        bool isTwoStepsForward = Math.Abs(yDiff) == 2;
+		return (isOneStepForward && (isStraightMoveAndNotOccupiedField || isDiagonalMoveAndOccupiedField))
+            || (isInStartPosition && isTwoStepsForward);
 	}
 
 	// TODO change Pawn to Queen if other end reached

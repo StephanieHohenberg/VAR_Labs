@@ -13,6 +13,8 @@ TagManager:
   - Pawn
   - Knight
   - Rook
+  - Board
+  - highlight
   layers:
   - Default
   - TransparentFX
