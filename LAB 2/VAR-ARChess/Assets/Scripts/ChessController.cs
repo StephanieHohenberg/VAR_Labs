@@ -23,12 +23,14 @@ public class ChessController : MonoBehaviour
 	private Figure selectedFigureObject;
 
 	public Text turnDisplayText;
-	
+	public Text errorDisplayText;
+
 	Ray ray;
 	RaycastHit hit;
 
 	void Start() {
 		initChessboard();
+		turnDisplayText.text = MESSAGE_WHITE_TURN;
 	}
 
     void Update()
@@ -164,8 +166,7 @@ public class ChessController : MonoBehaviour
     } 
 
     private void displayMessage(string text) {
-    	turnDisplayText.text = text;
-    	// TODO anderes Text Objekt
+    	errorDisplayText.text = text;
     }
 
     private void initChessboard() {
