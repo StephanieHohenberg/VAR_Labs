@@ -18,7 +18,9 @@ public class ChessController : MonoBehaviour
 
 	private int amountOfTurns = 0;
 	private Figure[,] chessBoard;
-	
+
+    private GameObject chessGO;
+    private Vector3 rcHit;
 	private GameObject selectedGameObject;
 	private Figure selectedFigureObject;
 
@@ -30,25 +32,44 @@ public class ChessController : MonoBehaviour
 	RaycastHit hit;
 
 	void Start() {
+        chessGO = GameObject.FindGameObjectWithTag("Chess"); //Top Level Prefab which holds scaling and position properties.
 		speed = 100000000.0f;
 		initChessboard();
 		turnDisplayText.text = MESSAGE_WHITE_TURN;
 	}
-
+    
     void Update()
     {
-    	 ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-         if(Physics.Raycast(ray, out hit)) {
-			if(Input.GetMouseButtonDown(0)) {
-	         	displayMessage("");
-	         	GameObject hitGameObject = hit.transform.gameObject;
-				if(hitGameObject.tag != "Chess") {
-					this.onClickOnFigure(hitGameObject);
-            	} else {
-            		this.onClickOnBoard(hit);
-            	}
+
+        if (Input.GetMouseButtonDown(0))
+        {
+
+            displayMessage("");
+            ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out hit))
+            {
+                rcHit = hit.point;
+                Debug.Log(rcHit);
+
+                rcHit = chessGO.transform.InverseTransformPoint(rcHit); //we always consider the Raycast hit in respect to the Chessboard scale
+
+                Vector3Int integerHit = Vector3Int.RoundToInt(rcHit); // x and z are the respective board indices (also works when clicking figures!)
+                Debug.Log(integerHit);
+
+                //to access them:
+                int index_i = integerHit.x;
+                int index_j = integerHit.z;
+
+                if (hit.transform.gameObject.tag != "Chess")
+                {
+                    onClickOnFigure(hit.transform.gameObject); //should be changed
+                }
+                else
+                {
+                    onClickOnBoard(hit); //should be changed
+                }
             }
-         }
+        }
     }
 
     private void onClickOnFigure(GameObject hitGameObject) {
