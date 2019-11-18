@@ -22,6 +22,7 @@ public class ChessController : MonoBehaviour
 	private GameObject selectedGameObject;
 	private Figure selectedFigureObject;
 
+    public float speed;
 	public Text turnDisplayText;
 	public Text errorDisplayText;
 
@@ -29,6 +30,7 @@ public class ChessController : MonoBehaviour
 	RaycastHit hit;
 
 	void Start() {
+		speed = 100000000.0f;
 		initChessboard();
 		turnDisplayText.text = MESSAGE_WHITE_TURN;
 	}
@@ -37,8 +39,9 @@ public class ChessController : MonoBehaviour
     {
     	 ray = Camera.main.ScreenPointToRay(Input.mousePosition);
          if(Physics.Raycast(ray, out hit)) {
-         	GameObject hitGameObject = hit.transform.gameObject;
 			if(Input.GetMouseButtonDown(0)) {
+	         	displayMessage("");
+	         	GameObject hitGameObject = hit.transform.gameObject;
 				if(hitGameObject.tag != "Chess") {
 					this.onClickOnFigure(hitGameObject);
             	} else {
@@ -86,37 +89,41 @@ public class ChessController : MonoBehaviour
 		// TODO get chessBoard indices By clicked Field
     	int x = 0;
     	int y = 0;
-
+    	/**
     	if(chessBoard[x,y] != null) {
-    		//GameObject gameObjectOnField = null; // TODO get GameObject on clicked Field By chessboard Indices 
+    		GameObject gameObjectOnField = null; // TODO get GameObject on clicked Field By chessboard Indices 
     		if(hasFigureColorOfCurrentPlayer(chessBoard[x,y])) {
-    			//selectFigure(gameObjectOnField);
+    			selectFigure(gameObjectOnField);
     		} else {
-    			//makeTurnBeating(gameObjectOnField);
+    			makeTurnBeating(gameObjectOnField);
     		}
     	}
 
-		if( !selectedFigureObject.isValidMove(x, y, chessBoard)) {
+		 if(!selectedFigureObject.isValidMove(x, y, chessBoard)) {
 			displayMessage(MESSAGE_INVALID_MOVE);
 			return;
-		}    	
+		}   
+		**/ 	
 
-		// TODO normalize/centralize position
-		selectedGameObject.transform.position = new Vector3((float)Math.Floor(hit.point.x), -80, (float)Math.Floor(hit.point.z));
+		// TODO normalize/centralize position target Position
+		float step =  speed * Time.deltaTime; 
+		Vector3 targetPosition = new Vector3((float)Math.Floor(hit.point.x), -80, (float)Math.Floor(hit.point.z));
+		selectedGameObject.transform.position = Vector3.MoveTowards(selectedGameObject.transform.position, targetPosition, step);
+
 		moveFigureTo(selectedFigureObject, x, y);
 		nextTurn();
-
-		//TOOD: animation
 	}
 
     private void makeTurnBeating(GameObject hitGameObject) {
     	// TODO get ChessBoard Indices By GameObjectFigure
+    	
     	int x = 0;
     	int y = 0;
+		/**
 		if(! selectedFigureObject.isValidMove(x, y, chessBoard)) {
 			displayMessage(MESSAGE_INVALID_MOVE);
-			return;
-		}    	
+			//return;
+		}   **/ 	
 
     	checkWhetherKingGotBeaten(hitGameObject);
     	hitGameObject.SetActive(false);
@@ -179,10 +186,10 @@ public class ChessController : MonoBehaviour
 
     	string[] sideRoles = new string[] {"Rook", "Knight", "Bishop"};
     	for (int j=0; j<3; j++) {
-    		chessBoard[j, 1] = new Figure(j, 1, "Pawn", false);
-    		chessBoard[7-j, 1] = new Figure(7-j, 1, "Pawn", false);
-    		chessBoard[j, 6] = new Figure(j, 6, "Pawn", true);	
-    		chessBoard[7-j, 6] = new Figure(7-j, 6, "Pawn", true);	
+    		chessBoard[j, 0] = new Figure(j, 0, sideRoles[j], false);
+    		chessBoard[7-j, 0] = new Figure(7-j, 0, sideRoles[j], false);
+    		chessBoard[j, 7] = new Figure(j, 7, sideRoles[j], true);	
+    		chessBoard[7-j, 7] = new Figure(7-j, 7, sideRoles[j], true);	
     	}
 
 		chessBoard[0, 4] = new Figure(0, 4, "Queen", false);
