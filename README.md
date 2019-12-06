@@ -3,6 +3,6 @@ This project includes all labatory submissions of the university course [Virtual
 
 Lab1: Stereoscopy - Cave Simulator with flying birds
 
-Lab2: AR Project
+Lab2: AR Project - ARChess
 
-Lab3: VR Project
+Lab3: VR Project - VR 3D-PrintModel-Builder
