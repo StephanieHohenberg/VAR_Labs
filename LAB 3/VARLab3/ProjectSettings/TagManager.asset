@@ -7,6 +7,15 @@ TagManager:
   - Interactable
   - Floor
   - RotationFix
+  - projectile
+  - FxTemporaire
+  - ColorSelector
+  - PaintCan
+  - Cylinder_T
+  - Cylinder_R
+  - Cylinder_L
+  - Cylinder_BL
+  - Cylinder_BR
   layers:
   - Default
   - TransparentFX
