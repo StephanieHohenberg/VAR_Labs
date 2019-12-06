@@ -1,0 +1,16 @@
+{
+  "source": "Unity",
+  "applications": [
+    {
+      "app_key": "application.generated.unity.varlab3.exe",
+      "launch_type": "url",
+      "url": "steam://launch/",
+      "action_manifest_path": "D:\\_MASTER STUDIUM\\Winter1920 Barcelona\\VAR\\LAB\\Lab 3 Virtual Reality\\CleanSteamVRWMR\\VARLab3\\Assets\\StreamingAssets\\SteamVR\\actions.json",
+      "strings": {
+        "en_us": {
+          "name": "VARLab3 [Testing]"
+        }
+      }
+    }
+  ]
+}
