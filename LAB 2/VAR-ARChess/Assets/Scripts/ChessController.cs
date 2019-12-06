@@ -32,8 +32,9 @@ public class ChessController : MonoBehaviour
 
 	Ray ray;
 	RaycastHit hit;
+    Vector3 input = Vector3.zero;
 
-	void Start() {
+    void Start() {
         chessGO = GameObject.FindGameObjectWithTag("Chess"); //Top Level Prefab which holds scaling and position properties.
 		speed = 100000000.0f;
 		initChessboard();
@@ -43,27 +44,16 @@ public class ChessController : MonoBehaviour
     void Update()
     {
 
-        Vector3 input = Vector3.zero;
-#if UNITY_EDITOR
-        if (Input.GetMouseButtonDown(0))
-                input = Input.mousePosition;
-#else
-        for (var i = 0; i < Input.touchCount; ++i) {
-            if (Input.GetTouch(i).phase == TouchPhase.Began) {
-                input = Input.GetTouch(i).position;
-            }
-        }
-                 
+//#if !UNITY_ANDROID
+//        if (Input.GetMouseButtonDown(0))
+//                input = Input.mousePosition;
 
-#endif
-
-        if (input != Vector3.zero)
-            processInput(input);
-
-
+//        if (input != Vector3.zero)
+//            processInput(input);
+//#endif
     }
 
-    void processInput(Vector3 input)
+    public void processInput(Vector3 input)
     {
         displayMessage("");
         dehighlightOptions();

@@ -5,9 +5,12 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
+  - enabled: 0
+    path: Assets/Scenes/ARchess.unity
+    guid: b00034d05024b3f45b429ed285b57402
   - enabled: 1
-    path: Assets/ARChess.unity
-    guid: 49c52deadc973084ebda1718e7efb560
+    path: Assets/Scenes/SimpleAR.unity
+    guid: b4694df5dd97d284f98b48e170fca4f6
   m_configObjects:
     com.unity.xr.arkit.PlayerSettings: {fileID: 11400000, guid: 2d5fb8e61571b4e3897f221189089fd6,
       type: 2}
