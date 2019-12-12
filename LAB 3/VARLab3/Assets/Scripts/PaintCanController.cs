@@ -115,7 +115,6 @@ public class PaintCanController : MonoBehaviour
     private void updatePositionOfColorMenu()
     {
         colorSelector.transform.position = pointer.transform.position; 
-        colorSelector.transform.forward = pointer.transform.forward + 1;
         // TODO
     }
 
