@@ -16,7 +16,8 @@
     },
     {
       "name": "/actions/default/in/GrabGrip",
-      "type": "boolean"
+      "type": "boolean",
+      "requirement": "mandatory"
     },
     {
       "name": "/actions/default/in/Pose",
@@ -64,6 +65,15 @@
       "name": "/actions/default/in/TouchPadTouch",
       "type": "boolean",
       "requirement": "mandatory"
+    },
+    {
+      "name": "/actions/default/in/PushAnalog",
+      "type": "boolean",
+      "requirement": "mandatory"
+    },
+    {
+      "name": "/actions/default/in/SnapBack",
+      "type": "boolean"
     },
     {
       "name": "/actions/default/out/Haptic",

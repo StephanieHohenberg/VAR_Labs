@@ -5,30 +5,39 @@ using Valve.VR;
 
 public class HandPoseController : MonoBehaviour
 {
-    //Rotationfix should be used to do the raycast from the "circle" of the controller (WMR specific)
-
     //this script should handle Pose for both hands
     //a raycast will be displayed from the last "used" hand
-    //
-
-    public GameObject m_Pointer;
-    public SteamVR_Action_Boolean m_TeleportAction;
+    
+        //General 
 
     private Transform m_Player = null;
     private SteamVR_Behaviour_Pose m_Pose = null;
-    private Transform m_rotationFix = null;
 
+    //Rotationfix should be used to do the raycast from the "circle" of the controller (WMR specific)
+    private Transform m_rotationFix = null;
+    private LineRenderer m_lineRenderer = null;
     private bool m_HasPosition = false;
+    public GameObject m_Pointer;
+
+    //Teleporting
+    public SteamVR_Action_Boolean m_TeleportAction;
     private bool m_IsTeleporting = false;
     private float m_FadeTime = 0.2f;
+
+    //Grabbing & Interaction
+    //keep the Scripts (at least a bit) semantically separated
+    // forward Global Variables like IsTeleporting or Rotationfix
+    public HandScript m_HandScript = null;
     
-    private LineRenderer m_lineRenderer = null;
+
 
     private void Awake()
     {
         m_Pose = GetComponent<SteamVR_Behaviour_Pose>();
         m_rotationFix = this.gameObject.transform.GetChild(0);
         m_lineRenderer = GetComponent<LineRenderer>();
+        m_HandScript = GetComponent<HandScript>();
+        m_HandScript.m_rotationFix = this.m_rotationFix;
         m_Player = GameObject.FindGameObjectWithTag("Player").transform;
     }
 
@@ -38,16 +47,14 @@ public class HandPoseController : MonoBehaviour
         // Pointer
         m_HasPosition = UpdatePointer();
         m_Pointer.SetActive(m_HasPosition);
-
         
-
         if (m_TeleportAction.GetStateUp(m_Pose.inputSource))
             TryTeleport();
     }
 
     private void TryTeleport()
     {
-        if (!m_HasPosition || m_IsTeleporting)
+        if (!m_HasPosition || m_IsTeleporting || m_HandScript.m_HasInteractable)
             return;
         Vector3 headPosition = SteamVR_Render.Top().head.position;
 
@@ -96,22 +103,15 @@ public class HandPoseController : MonoBehaviour
 
             string hittag = hit.transform.gameObject.tag;
             //check Tag of the Hit and decide actions
+            if (hit.transform.CompareTag("Interactable"))
+            {
+
+            }
 
             return true;
         }
-
-
         //if not
         return false;
     }
-
-    void HandleGrip()
-    {
-
-    }
     
-    void DoJediPull()
-    {
-        //when holding an object through a raycast/laserpointer x
-    }
 }

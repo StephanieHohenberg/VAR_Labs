@@ -4,20 +4,24 @@ using UnityEngine;
 
 public class PaintCanController : MonoBehaviour
 {
+	public GameObject pointer;
     public GameObject spray;
     public GameObject colorSelector;
     private Color color = Color.red;
 
     private LineRenderer lineRenderer = null;
+    private Transform rotationFix = null;
 
 
     void Awake()
     {
+        rotationFix = this.gameObject.transform.GetChild(0);
         lineRenderer = GetComponent<LineRenderer>();
     
         changeColorOfGameObject(spray, color);
+        changeColorOfGameObject(pointer, color);
 
-        lineRenderer.enabled = false;
+        pointer.SetActive(false);
         spray.SetActive(false);
         colorSelector.SetActive(false);
     }
@@ -29,17 +33,23 @@ public class PaintCanController : MonoBehaviour
 
     void Update() 
     {
-        var hitGameObject = updateRaycastAndCheckForHitGameobject();
-        if (hitGameObject != null)
-        {
-            if ( spray.activeSelf )  
-    	    {
-    		
+    	if( pointer.activeSelf )  
+    	{
+    		var hitGameObject = updatePositionToHandAndCheckForHitGameobject(pointer);
+    		if(hitGameObject != null) 
+    		{
+    			onPointerHit(hitGameObject);
+    		}
+
+    	}
+
+    	if( spray.activeSelf )  
+    	{
+    		var hitGameObject = updatePositionToHandAndCheckForHitGameobject(spray);
+    		if(hitGameObject != null) 
+    		{
     			onSrayHit(hitGameObject);
-    		} else
-            {
-                onPointerHit(hitGameObject);
-            }
+    		}
 
     	}
 	}
@@ -47,13 +57,13 @@ public class PaintCanController : MonoBehaviour
 
     public void onAttach() 
     {
-        lineRenderer.enabled = true;
+        pointer.SetActive(true);   
     }
   
 
    	public void onDeattach() 
     {
-        lineRenderer.enabled = false;
+        pointer.SetActive(false);   
     }
 
     public void onSpray() 
@@ -80,21 +90,22 @@ public class PaintCanController : MonoBehaviour
         colorSelector.SetActive(false);
     }
 
-    private GameObject updateRaycastAndCheckForHitGameobject()
+    private GameObject updatePositionToHandAndCheckForHitGameobject(GameObject sprayOrPointer)
     {
-        Vector3 CanOpening = transform.position + transform.up * 0.09f;
-        lineRenderer.SetPosition(0, CanOpening);
-        Vector3 endPos = CanOpening + transform.forward * 5;
+        lineRenderer.SetPosition(0, rotationFix.position);
+        Vector3 endPos = rotationFix.position + rotationFix.forward * 20;
         lineRenderer.SetPosition(1, endPos);
 
         //Raycast from Controller
-        Ray ray = new Ray(CanOpening, transform.forward);
+        Ray ray = new Ray(transform.position, rotationFix.forward);
         RaycastHit hit;
 
         //if its a hit
         if(Physics.Raycast(ray, out hit))
         {
+            sprayOrPointer.transform.position = hit.point;
             lineRenderer.SetPosition(1, hit.point);
+
             return hit.transform.gameObject; 
         }
 
@@ -103,8 +114,9 @@ public class PaintCanController : MonoBehaviour
 
     private void updatePositionOfColorMenu()
     {
-        colorSelector.transform.position = transform.position+transform.forward;
-        colorSelector.transform.LookAt(transform.position + 2 * transform.forward);
+        colorSelector.transform.position = pointer.transform.position; 
+        colorSelector.transform.forward = pointer.transform.forward + 1;
+        // TODO
     }
 
     private void onPointerHit(GameObject gameObject) 
@@ -115,8 +127,7 @@ public class PaintCanController : MonoBehaviour
     		color = renderer.material.GetColor("_Color");
 
     		changeColorOfGameObject(spray, color);
-            lineRenderer.startColor=color;
-            lineRenderer.endColor = color;
+    		changeColorOfGameObject(pointer, color);
     	}
     }
 

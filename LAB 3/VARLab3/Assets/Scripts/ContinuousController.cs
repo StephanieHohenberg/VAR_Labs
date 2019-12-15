@@ -7,7 +7,7 @@ public class ContinuousController : MonoBehaviour
 {
     public float m_Gravity = 80*9.81f;
     public float m_Sensitivity = 0.5f;
-    public float m_MaxSpeed = 30.0f;
+    public float m_MaxSpeed = 1000.0f;
     public float m_RotateIncrement = 90;
 
     public SteamVR_Action_Boolean m_snapLeftAction = SteamVR_Input.GetBooleanAction("SnapTurnLeft");
@@ -28,6 +28,7 @@ public class ContinuousController : MonoBehaviour
 
     void Start()
     {
+        Physics.IgnoreLayerCollision(8, 9);
         m_CameraRig = SteamVR_Render.Top().origin;
         m_Head = SteamVR_Render.Top().head;
     }
