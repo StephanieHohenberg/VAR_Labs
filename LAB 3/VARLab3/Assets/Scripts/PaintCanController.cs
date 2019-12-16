@@ -9,7 +9,7 @@ public class PaintCanController : MonoBehaviour
     private Color color = Color.red;
 
     private LineRenderer lineRenderer = null;
-
+     private bool isCoroutineExecuting = false;
 
     void Awake()
     {
@@ -25,17 +25,19 @@ public class PaintCanController : MonoBehaviour
 
     void Start()
     {
+
     }
+
 
     void Update() 
     {
         var hitGameObject = updateRaycastAndCheckForHitGameobject();
         if (hitGameObject != null)
         {
-            if ( spray.activeSelf )  
+            if ( spray.activeSelf && isCoroutineExecuting == false)  
     	    {
-    		
-    			onSrayHit(hitGameObject);
+                StartCoroutine(onSrayHit(hitGameObject));
+    			
     		} else
             {
                 onPointerHit(hitGameObject);
@@ -69,15 +71,21 @@ public class PaintCanController : MonoBehaviour
     	onAttach();
     }
 
-    public void onOpenColorMenu() 
+    public void onToggleColorMenu() 
     {
-        updatePositionOfColorMenu();
-        colorSelector.SetActive(true);
+        if(colorSelector.activeSelf) 
+        {
+            colorSelector.SetActive(false);
+        } 
+        else 
+        {
+            updatePositionOfColorMenu();
+            colorSelector.SetActive(true);
+        }
     }
 
     public void onCloseColorMenu() 
     {
-        colorSelector.SetActive(false);
     }
 
     private GameObject updateRaycastAndCheckForHitGameobject()
@@ -104,7 +112,7 @@ public class PaintCanController : MonoBehaviour
     private void updatePositionOfColorMenu()
     {
         colorSelector.transform.position = transform.position+transform.forward;
-        colorSelector.transform.LookAt(transform.position + 2 * transform.forward);
+        colorSelector.transform.LookAt(transform.position + 10 * transform.forward);
     }
 
     private void onPointerHit(GameObject gameObject) 
@@ -114,17 +122,29 @@ public class PaintCanController : MonoBehaviour
 	    	var renderer = gameObject.GetComponent<Renderer>();
     		color = renderer.material.GetColor("_Color");
 
-    		changeColorOfGameObject(spray, color);
-            lineRenderer.startColor=color;
+            ParticleSystem.MainModule settings = spray.GetComponent<ParticleSystem>().main;
+            settings.startColor = new ParticleSystem.MinMaxGradient( color );
+
+            changeColorOfGameObject(spray, color);
+
+            lineRenderer.material = renderer.material;
+            lineRenderer.startColor = color;
             lineRenderer.endColor = color;
+
     	}
     }
 
-    private void onSrayHit(GameObject gameObject) 
+    private IEnumerator onSrayHit(GameObject gameObject) 
     {
+ 
+        isCoroutineExecuting = true;
+        yield return new WaitForSeconds(5.0f);
+
     	if(gameObject.tag == "Interactable") {
     		changeColorOfGameObject(gameObject, color);
     	} 
+
+        isCoroutineExecuting = false;
     }
 
     
