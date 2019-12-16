@@ -87,6 +87,7 @@ public class HandPoseController : MonoBehaviour
     }
     private bool UpdatePointer()
     {
+    
         m_lineRenderer.SetPosition(0, m_rotationFix.position);
         Vector3 endPos = m_rotationFix.position + m_rotationFix.forward * 20;
         m_lineRenderer.SetPosition(1, endPos);
@@ -100,12 +101,13 @@ public class HandPoseController : MonoBehaviour
         {
             m_Pointer.transform.position = hit.point;
             m_lineRenderer.SetPosition(1, hit.point);
-
+            
             string hittag = hit.transform.gameObject.tag;
             //check Tag of the Hit and decide actions
             if (hit.transform.CompareTag("Interactable"))
             {
-
+                Debug.Log("hit Interactable");
+                m_HandScript.m_PointingAt = hit.transform.GetComponent<Rigidbody>();
             }
 
             return true;

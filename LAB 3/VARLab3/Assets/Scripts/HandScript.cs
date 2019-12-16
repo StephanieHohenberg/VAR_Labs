@@ -14,9 +14,9 @@ public class HandScript : MonoBehaviour
 
     //Interactables
     private Interactable m_CurrentInteractable = null;
+    public Rigidbody m_PointingAt = null;
     public bool m_HasInteractable = false;
-
-    private PaintCanController cancontroller;
+    private PaintCanController m_Cancontroller;
 
     Rigidbody targetBody = null;
     private List<Interactable> m_ContactInteractables = new List<Interactable>();
@@ -47,14 +47,12 @@ public class HandScript : MonoBehaviour
         if (m_SecondaryAction.GetStateUp(m_Pose.inputSource))
             DoSecondary();
 
-        if (m_PushAction.GetAxis(m_Pose.inputSource)!= 0f) {
+        if (m_PushAction.GetAxis(m_Pose.inputSource) != 0f)
+        {
             DoPrimary();
-            if (m_CurrentInteractable != null)
-            {
-                float pushForce = m_PushAction.GetAxis(m_Pose.inputSource);
-                UseInteractable(pushForce);
-            }
-                
+        }
+        else if (m_Cancontroller != null) {
+            m_Cancontroller.onSprayStop();
         }
     }
     private void DoSecondary()
@@ -64,10 +62,9 @@ public class HandScript : MonoBehaviour
         {
             PlaceGallery();
         }
-        else if (cancontroller != null)
+        else if (m_Cancontroller != null)
         {
-            //Open Colorpicker
-            //concontroller.placePicker
+            m_Cancontroller.onToggleColorMenu(); 
         }
         else
         {
@@ -79,16 +76,16 @@ public class HandScript : MonoBehaviour
 
     private void DoPrimary()
     {
-        if (!m_HasInteractable)
+        if (!m_HasInteractable && m_PointingAt != null)
         {
-            TryPullSomething();
+            Debug.Log("TryPushSomething:"+m_PointingAt.position);
+            TryPullSomething(m_PointingAt);
         }
-        else if (cancontroller != null)
+        else if (m_Cancontroller != null)
         {
-            //cancontroller.primaryAction()
-            //Spray
+            m_Cancontroller.onSpray();
         }
-        else
+        else if (m_HasInteractable)
         {
             float pushForce = m_PushAction.GetAxis(m_Pose.inputSource);
             UseInteractable(pushForce);
@@ -109,22 +106,22 @@ public class HandScript : MonoBehaviour
         m_ContactInteractables.Remove(other.gameObject.GetComponent<Interactable>());
     }
 
-    public void Pickup()
+    public void Pickup(Interactable forced = null)
     {
-        //copy it if the interactable is a master
-        m_CurrentInteractable = GetNearestInteractable();
+        if (forced == null)
+        {
+            m_CurrentInteractable = GetNearestInteractable();
+        } else
+        {
+            m_CurrentInteractable = forced;
+        }
 
         if (!m_CurrentInteractable)
             return;
 
         if (m_CurrentInteractable.isMaster)
         {
-            GameObject copyGO = Instantiate(m_CurrentInteractable.gameObject);
-            copyGO.transform.position = m_CurrentInteractable.transform.position;
-            m_CurrentInteractable= copyGO.GetComponent<Interactable>();
-            m_CurrentInteractable.isMaster = false;
-            gallery.transform.position = galleryReset;
-            gallery.SetActive(false);
+            TakeFromGallery();
         }
 
         //already held, check
@@ -145,7 +142,10 @@ public class HandScript : MonoBehaviour
         m_HasInteractable = true;
 
         //get paintCanController if Possible
-        m_CurrentInteractable.TryGetComponent<PaintCanController>(out cancontroller);
+        m_CurrentInteractable.TryGetComponent<PaintCanController>(out m_Cancontroller);
+        if (m_Cancontroller != null) {
+            m_Cancontroller.onAttach();
+        }
     }
 
     public void Drop(bool freeze=false)
@@ -158,8 +158,14 @@ public class HandScript : MonoBehaviour
         targetBody.isKinematic = freeze;
         m_Joint.connectedBody = null;
 
+        if (m_Cancontroller != null)
+        {
+            m_Cancontroller.onDeattach();
+        }
+
         m_CurrentInteractable.m_ActiveHand = null;
         m_CurrentInteractable = null;
+        m_Cancontroller = null;
         m_HasInteractable = false;
     }
 
@@ -200,7 +206,7 @@ public class HandScript : MonoBehaviour
         Rigidbody RB = m_Joint.connectedBody;
         m_Joint.connectedBody = null;
         // Can now move unconnected hinge:
-        RB.transform.LookAt(m_rotationFix.position + m_rotationFix.forward);
+        RB.transform.LookAt(m_rotationFix.position + m_rotationFix.forward*20);
         RB.transform.position += m_rotationFix.forward * 0.01f;
 
         m_Joint.connectedBody = RB; // screw it back in
@@ -213,8 +219,34 @@ public class HandScript : MonoBehaviour
         gallery.SetActive(true);
     }
 
-    private void TryPullSomething()
+    private void TakeFromGallery()
     {
+        GameObject copyGO = Instantiate(m_CurrentInteractable.gameObject);
+        m_ContactInteractables.Remove(m_CurrentInteractable);
+        copyGO.transform.position = m_CurrentInteractable.transform.position;
+        m_CurrentInteractable = copyGO.GetComponent<Interactable>();
+        m_CurrentInteractable.isMaster = false;
+        gallery.transform.position = galleryReset;
+        gallery.SetActive(false);
+    }
 
+    private void TryPullSomething(Rigidbody obj)
+    {
+        Debug.Log("Inside method");
+        Vector3 Vec = (obj.transform.position - transform.position);
+        if (Vec.magnitude <= 0.2)
+        {
+            Debug.Log(Vec.magnitude);
+            Pickup(obj.gameObject.GetComponent<Interactable>());
+        }
+        else
+        {
+            Debug.Log("ChangePosition");
+            obj.transform.LookAt(m_rotationFix.position - m_rotationFix.forward);
+            //obj.AddForce(-obj.transform.position + transform.position);
+            obj.transform.position -= m_rotationFix.forward * Vec.magnitude/10;
+            obj.velocity = (m_rotationFix.position - obj.transform.position);
+        }
+        // It has a Magnitude Depending on the Distance, otherwise use normal * factor
     }
 }

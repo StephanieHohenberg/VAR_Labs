@@ -14,7 +14,7 @@ public class Interactable : MonoBehaviour
 
     void Awake()
     {
-        m_Rigidbody = this.GetComponent<Rigidbody>();
+        m_Rigidbody = GetComponent<Rigidbody>();
     }
 
     // Update is called once per frame
