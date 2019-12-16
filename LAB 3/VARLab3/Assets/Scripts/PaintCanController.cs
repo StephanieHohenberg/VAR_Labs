@@ -9,13 +9,14 @@ public class PaintCanController : MonoBehaviour
     private Color color = Color.red;
 
     private LineRenderer lineRenderer = null;
-     private bool isCoroutineExecuting = false;
+    private bool isCoroutineExecuting = false;
 
     void Awake()
     {
         lineRenderer = GetComponent<LineRenderer>();
-    
-        changeColorOfGameObject(spray, color);
+
+        ParticleSystem.MainModule settings = spray.GetComponent<ParticleSystem>().main;
+        settings.startColor = new ParticleSystem.MinMaxGradient( color );
 
         lineRenderer.enabled = false;
         spray.SetActive(false);
@@ -31,12 +32,12 @@ public class PaintCanController : MonoBehaviour
 
     void Update() 
     {
-        var hitGameObject = updateRaycastAndCheckForHitGameobject();
+       var hitGameObject = updateRaycastAndCheckForHitGameobject();
         if (hitGameObject != null)
         {
             if ( spray.activeSelf && isCoroutineExecuting == false)  
     	    {
-                StartCoroutine(onSrayHit(hitGameObject));
+                StartCoroutine(onSprayHit(hitGameObject));
     			
     		} else
             {
@@ -60,8 +61,8 @@ public class PaintCanController : MonoBehaviour
 
     public void onSpray() 
     {
-        onCloseColorMenu();
-    	onDeattach();
+        colorSelector.SetActive(false);
+        onDeattach();
         spray.SetActive(true);
     }
 
@@ -84,9 +85,6 @@ public class PaintCanController : MonoBehaviour
         }
     }
 
-    public void onCloseColorMenu() 
-    {
-    }
 
     private GameObject updateRaycastAndCheckForHitGameobject()
     {
@@ -134,7 +132,7 @@ public class PaintCanController : MonoBehaviour
     	}
     }
 
-    private IEnumerator onSrayHit(GameObject gameObject) 
+    private IEnumerator onSprayHit(GameObject gameObject) 
     {
  
         isCoroutineExecuting = true;
@@ -150,7 +148,7 @@ public class PaintCanController : MonoBehaviour
     
     private void changeColorOfGameObject(GameObject gameObject, Color color) 
     {
-    	var renderer = gameObject.GetComponent<Renderer>();
+        var renderer = gameObject.GetComponent<Renderer>();
     	renderer.material.SetColor("_Color", color);
     }
 
